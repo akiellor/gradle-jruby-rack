@@ -1,0 +1,60 @@
+apply plugin: 'war'
+apply plugin: 'idea'
+
+repositories {
+	maven {
+		url "http://gemjars.org/maven"
+	}
+	mavenCentral()
+}
+
+configurations {
+    bootstrap
+    bootstrap.exclude group: 'org.eclipse.jetty.orbit', module: 'javax.servlet'
+
+    compile.extendsFrom bootstrap
+}
+
+dependencies {
+    bootstrap 'org.eclipse.jetty:jetty-server:8.1.4.v20120524'
+    bootstrap 'org.eclipse.jetty:jetty-servlet:8.1.4.v20120524'
+    bootstrap 'org.eclipse.jetty:jetty-io:8.1.4.v20120524'
+    bootstrap 'org.eclipse.jetty:jetty-util:8.1.4.v20120524'
+    bootstrap 'org.eclipse.jetty:jetty-webapp:8.1.4.v20120524'
+    bootstrap 'javax.servlet:javax.servlet-api:3.0.1'
+
+    compile module('org.jruby.rack:jruby-rack:1.1.7') {
+        dependency 'org.jruby:jruby-core:1.6.7.2'
+        dependency 'org.jruby:jruby-stdlib:1.6.7.2'
+        dependency 'com.jcraft:jzlib:1.1.1'
+    }
+
+    compile 'org.rubygems:sinatra:1.3.2'
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDir "src/main/ruby"
+        }
+    }
+}
+
+war {
+    from configurations.bootstrap.collect { it.isDirectory() ? it : zipTree(it) } + files(sourceSets.main.output)
+    classpath = runtimeClasspath - configurations.bootstrap
+    manifest {
+        attributes 'Main-Class': 'com.example.WebServer'
+    }
+}
+
+artifacts {
+    war
+}
+
+task(run, type: JavaExec, dependsOn: 'war') {
+    main 'com.example.WebServer'
+    environment RACK_ENV: 'development'
+    classpath war.archivePath
+}
+
